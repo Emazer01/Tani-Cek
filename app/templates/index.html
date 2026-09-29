@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaniCek AI - Sistem Cerdas Deteksi Dini Hama & Ketahanan Pangan</title>
+  
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Leaflet GIS Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .badge-glow {
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.35);
+    }
+    .card-hover {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .card-hover:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 24px -10px rgba(16, 185, 129, 0.2);
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- TOP HEADER / BRANDING -->
+  <header class="bg-gradient-to-r from-emerald-800 via-emerald-700 to-green-700 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+        <!-- Logo & Title -->
+        <div class="flex items-center space-x-3">
+          <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-inner">
+            <i data-lucide="sprout" class="w-7 h-7 text-emerald-300"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-2xl font-extrabold tracking-tight">Tani<span class="text-emerald-300">Cek</span> AI</span>
+              <span class="bg-emerald-500/30 text-emerald-200 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-emerald-400/30">Ketahanan Pangan</span>
+            </div>
+            <p class="text-xs text-emerald-100/90 font-normal">Sistem Deteksi Dini Hama & Kesehatan Tanaman Pangan Nasional</p>
+          </div>
+        </div>
+
+        <!-- Impact Badges & Action Buttons -->
+        <div class="flex items-center space-x-3 sm:space-x-4">
+          <div class="hidden md:flex items-center bg-black/15 px-3.5 py-1.5 rounded-xl border border-white/10">
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-300 mr-2"></i>
+            <span class="text-xs text-emerald-100">Gabah Terselamatkan: <strong id="header-saved-tons" class="text-white">~19.6 Ton</strong></span>
+          </div>
+
+          <button id="btn-open-settings" class="flex items-center space-x-1.5 bg-white/10 hover:bg-white/20 px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur-sm border border-white/20 transition">
+            <i data-lucide="key" class="w-4 h-4 text-amber-300"></i>
+            <span class="hidden sm:inline">API Key</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex space-x-1 sm:space-x-2 overflow-x-auto pb-2 pt-1 border-t border-emerald-600/50">
+        <button onclick="switchTab('tab-diagnose')" id="nav-diagnose" class="tab-btn active px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-white text-emerald-800 shadow-sm flex items-center space-x-2">
+          <i data-lucide="scan" class="w-4 h-4"></i>
+          <span>Deteksi Foto</span>
+        </button>
+        <button onclick="switchTab('tab-radar')" id="nav-radar" class="tab-btn px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg text-white hover:bg-white/10 flex items-center space-x-2">
+          <i data-lucide="map-pin" class="w-4 h-4"></i>
+          <span>Radar Peta Wabah</span>
+        </button>
+        <button onclick="switchTab('tab-chat')" id="nav-chat" class="tab-btn px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg text-white hover:bg-white/10 flex items-center space-x-2">
+          <i data-lucide="bot" class="w-4 h-4"></i>
+          <span>Tanya Penyuluh AI</span>
+        </button>
+        <button onclick="switchTab('tab-history')" id="nav-history" class="tab-btn px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg text-white hover:bg-white/10 flex items-center space-x-2">
+          <i data-lucide="clock" class="w-4 h-4"></i>
+          <span>Riwayat Laporan</span>
+        </button>
+        <button onclick="switchTab('tab-guide')" id="nav-guide" class="tab-btn px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg text-white hover:bg-white/10 flex items-center space-x-2">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          <span>Panduan PHT</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- MAIN BODY CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+    <!-- ==================== TAB 1: DETEKSI & DIAGNOSA ==================== -->
+    <div id="tab-diagnose" class="tab-content block space-y-6">
+      
+      <!-- Banner Alert Solusi Pangan -->
+      <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 sm:p-5 flex items-start sm:items-center justify-between shadow-sm">
+        <div class="flex items-start sm:items-center space-x-3.5">
+          <div class="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
+            <i data-lucide="leaf" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-emerald-900">Deteksi Cepat Penyakit Tanaman Pangan (Padi, Jagung, Cabai, Bawang)</h3>
+            <p class="text-xs text-emerald-700 mt-0.5">Unggah foto daun yang bermasalah atau coba sampel yang tersedia untuk memperoleh diagnosa instan & resep penanganan ramah lingkungan.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- KOLOM KIRI: INPUT FOTO & SAMPEL (5 Kolom) -->
+        <div class="lg:col-span-5 space-y-5">
+          
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-base font-bold text-slate-800 flex items-center space-x-2">
+                <i data-lucide="camera" class="w-5 h-5 text-emerald-600"></i>
+                <span>Unggah Foto Tanaman</span>
+              </h2>
+              <span class="text-xs text-slate-400">JPG, PNG, WEBP</span>
+            </div>
+
+            <!-- Upload Area & Drag-Drop -->
+            <div id="drop-zone" class="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[200px]">
+              <input type="file" id="file-input" accept="image/*" class="hidden">
+              
+              <div id="upload-placeholder" class="space-y-2">
+                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto">
+                  <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                </div>
+                <div>
+                  <p class="text-xs sm:text-sm font-semibold text-slate-700">Klik untuk ambil foto / unggah file</p>
+                  <p class="text-xs text-slate-500">atau tarik foto daun ke area ini</p>
+                </div>
+              </div>
+
+              <!-- Preview Container -->
+              <div id="preview-container" class="hidden w-full relative">
+                <img id="image-preview" src="" alt="Preview Daun" class="w-full h-56 object-cover rounded-xl border border-slate-200 shadow-inner">
+                <button type="button" id="btn-remove-image" class="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-full shadow-md transition">
+                  <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Input Pilihan Komoditas & Catatan Gejala -->
+            <div class="space-y-3 pt-2">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Jenis Tanaman Pangan (Opsional):</label>
+                <select id="select-crop" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none">
+                  <option value="">Otomatis Deteksi oleh AI</option>
+                  <option value="padi">🌾 Padi (Oryza sativa)</option>
+                  <option value="jagung">🌽 Jagung (Zea mays)</option>
+                  <option value="cabai">🌶️ Cabai Merah / Rawit</option>
+                  <option value="bawang">🧅 Bawang Merah</option>
+                  <option value="kedelai">🌱 Kedelai</option>
+                  <option value="tomat">🍅 Tomat Sayur</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Lokasi Lahan (Untuk Radar Pantauan Wabah):</label>
+                <div class="flex space-x-2">
+                  <input type="text" id="input-location" placeholder="Contoh: Karawang, Jawa Barat" class="flex-grow bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none">
+                  <button type="button" id="btn-get-gps" title="Gunakan GPS Perangkat" class="bg-slate-100 hover:bg-slate-200 border border-slate-300 px-3 rounded-xl text-slate-600 transition flex items-center">
+                    <i data-lucide="crosshair" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tombol Diagnosa Utama -->
+            <button id="btn-diagnose" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-sm shadow-md hover:shadow-lg transition flex items-center justify-center space-x-2 disabled:opacity-50">
+              <i data-lucide="sparkles" class="w-5 h-5"></i>
+              <span>Mulai Analisis AI</span>
+            </button>
+
+          </div>
+
+          <!-- SAMPEL FOTO SIAP UJI (Klik 1 Kali untuk Menguji Langsung) -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center space-x-1.5">
+                <i data-lucide="test-tube-2" class="w-4 h-4 text-emerald-600"></i>
+                <span>Sampel Siap Uji Cepat</span>
+              </h3>
+              <span class="text-xs text-emerald-600 font-semibold">1-Klik Uji Coba</span>
+            </div>
+            <p class="text-xs text-slate-500">Tidak punya foto daun? Klik salah satu sampel di bawah untuk langsung mencoba sistem:</p>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1" id="samples-container">
+              <!-- Diisi otomatis oleh JavaScript -->
+              <div class="animate-pulse bg-slate-100 h-20 rounded-xl"></div>
+              <div class="animate-pulse bg-slate-100 h-20 rounded-xl"></div>
+              <div class="animate-pulse bg-slate-100 h-20 rounded-xl"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- KOLOM KANAN: HASIL DIAGNOSA AI (7 Kolom) -->
+        <div class="lg:col-span-7">
+          
+          <!-- STATE 1: SEBELUM DIAGNOSA -->
+          <div id="result-empty" class="bg-white rounded-2xl p-10 border border-slate-200/80 shadow-sm text-center flex flex-col items-center justify-center min-h-[480px]">
+            <div class="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center mb-4">
+              <i data-lucide="scan-line" class="w-10 h-10"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800">Menunggu Unggahan Foto</h3>
+            <p class="text-xs sm:text-sm text-slate-500 max-w-md mt-1">
+              Pilih foto daun padi, jagung, atau cabai yang mengalami gejala bercak, menguning, atau layu di sebelah kiri. Sistem AI akan mendeteksi patogen secara otomatis.
+            </p>
+            <div class="mt-6 flex flex-wrap justify-center gap-2">
+              <span class="inline-flex items-center text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+                <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500 mr-1"></i> Multi-modal Vision AI
+              </span>
+              <span class="inline-flex items-center text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+                <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500 mr-1"></i> Solusi Pestisida Nabati
+              </span>
+              <span class="inline-flex items-center text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+                <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500 mr-1"></i> Suara Asisten Petani
+              </span>
+            </div>
+          </div>
+
+          <!-- STATE 2: LOADING SPINNER -->
+          <div id="result-loading" class="hidden bg-white rounded-2xl p-10 border border-slate-200/80 shadow-sm text-center flex flex-col items-center justify-center min-h-[480px]">
+            <div class="relative w-16 h-16">
+              <div class="w-16 h-16 rounded-full border-4 border-emerald-200 border-t-emerald-600 animate-spin"></div>
+              <div class="absolute inset-0 flex items-center justify-center text-emerald-600">
+                <i data-lucide="leaf" class="w-6 h-6"></i>
+              </div>
+            </div>
+            <h4 class="text-base font-bold text-slate-800 mt-4">AI Sedang Mendiagnosa Gejala...</h4>
+            <p class="text-xs text-slate-500 mt-1">Mencocokkan pola bercak, klorosis, dan patogen agronomi tanaman pangan</p>
+          </div>
+
+          <!-- STATE 3: HASIL DIAGNOSA LENGKAP -->
+          <div id="result-display" class="hidden space-y-4">
+            
+            <!-- Card Header Diagnosis -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span id="res-badge-crop" class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">Padi</span>
+                    <span id="res-badge-severity" class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-0.5 rounded-full">Kritis</span>
+                    <span id="res-badge-engine" class="bg-slate-100 text-slate-600 text-[10px] font-medium px-2 py-0.5 rounded-md">Gemini Vision AI</span>
+                  </div>
+                  <h2 id="res-disease-name" class="text-xl font-extrabold text-slate-900 mt-1">Penyakit Blast (Pyricularia oryzae)</h2>
+                  <p id="res-scientific-name" class="text-xs italic text-slate-500 font-medium">Magnaporthe oryzae</p>
+                </div>
+
+                <!-- Voice / Speaker Button for Farmers -->
+                <button id="btn-read-aloud" class="flex items-center justify-center space-x-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-4 py-2.5 rounded-xl font-bold text-xs transition shadow-sm self-start sm:self-auto">
+                  <i data-lucide="volume-2" class="w-4 h-4 text-emerald-600"></i>
+                  <span>Dengarkan Diagnosa</span>
+                </button>
+              </div>
+
+              <!-- Confidence Progress Bar -->
+              <div>
+                <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
+                  <span>Tingkat Akurasi AI (Confidence Score)</span>
+                  <span id="res-confidence-text" class="text-emerald-700 font-bold">94.2%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                  <div id="res-confidence-bar" class="bg-emerald-600 h-2.5 rounded-full transition-all duration-700" style="width: 94%;"></div>
+                </div>
+              </div>
+
+              <!-- Prediksi Alternatif Model Deep Learning -->
+              <div id="res-alt-container" class="hidden pt-3 border-t border-slate-100">
+                <p class="text-[11px] font-semibold text-slate-500 mb-1.5 flex items-center space-x-1">
+                  <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-400"></i>
+                  <span>Hipotesis Alternatif Neural Network (Top-3):</span>
+                </p>
+                <div id="res-alt-list" class="flex flex-wrap gap-2 text-xs"></div>
+              </div>
+            </div>
+
+            <!-- Gejala Klinis -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-2">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center space-x-2">
+                <i data-lucide="alert-circle" class="w-4 h-4 text-amber-500"></i>
+                <span>Karakteristik & Gejala yang Teridentifikasi:</span>
+              </h4>
+              <ul id="res-symptoms-list" class="space-y-1.5 text-xs text-slate-600 pl-1">
+                <!-- Diisi JS -->
+              </ul>
+            </div>
+
+            <!-- Tindakan Darurat (24-48 Jam) -->
+            <div class="bg-rose-50/70 border border-rose-200 rounded-2xl p-5 shadow-sm space-y-1.5">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-rose-800 flex items-center space-x-2">
+                <i data-lucide="flame" class="w-4 h-4 text-rose-600"></i>
+                <span>Tindakan Cepat Darurat (24 Jam Pertama):</span>
+              </h4>
+              <p id="res-emergency-action" class="text-xs text-rose-900 leading-relaxed font-medium">
+                Keringkan sawah secara berkala (drainase berselang) dan hentikan penggunaan pupuk Urea berlebih.
+              </p>
+            </div>
+
+            <!-- Dua Kolom: Solusi Nabati vs Solusi Kimiawi -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Solusi Organik / Ramah Lingkungan -->
+              <div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 space-y-2">
+                <h4 class="text-xs font-bold text-emerald-900 flex items-center space-x-1.5">
+                  <i data-lucide="leaf" class="w-4 h-4 text-emerald-600"></i>
+                  <span>Solusi Alami / Pestisida Nabati</span>
+                </h4>
+                <p id="res-organic-solution" class="text-xs text-emerald-950 leading-relaxed">
+                  Semprotkan ekstrak daun mimba dicampur rendaman bawang putih (200 gr/10 liter air) pada sore hari.
+                </p>
+              </div>
+
+              <!-- Solusi Kimiawi / Dosis Aman -->
+              <div class="bg-blue-50/60 border border-blue-200 rounded-2xl p-4 space-y-2">
+                <h4 class="text-xs font-bold text-blue-900 flex items-center space-x-1.5">
+                  <i data-lucide="flask-conical" class="w-4 h-4 text-blue-600"></i>
+                  <span>Obat Kimia & Dosis Aman</span>
+                </h4>
+                <p id="res-chemical-solution" class="text-xs text-blue-950 leading-relaxed">
+                  Fungisida berbahan aktif Trisiklazol dosis 1.0 - 1.5 ml/liter air.
+                </p>
+              </div>
+            </div>
+
+            <!-- Dampak Ketahanan Pangan & Kerugian Panen -->
+            <div class="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 space-y-1.5">
+              <h4 class="text-xs font-bold text-amber-900 flex items-center space-x-1.5">
+                <i data-lucide="trending-up" class="w-4 h-4 text-amber-700"></i>
+                <span>Dampak Terhadap Hasil & Ketahanan Pangan:</span>
+              </h4>
+              <p id="res-food-impact" class="text-xs text-amber-950 leading-relaxed">
+                Dapat menurunkan produksi beras hingga 40-70% jika mengenai fase pembentukan malai. Penyelamatan dini mengamankan 3-4 ton gabah per hektar.
+              </p>
+            </div>
+
+            <!-- Pencegahan Musim Depan -->
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1">
+              <h4 class="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
+                <i data-lucide="shield" class="w-4 h-4 text-slate-500"></i>
+                <span>Pencegahan Musim Tanam Berikutnya:</span>
+              </h4>
+              <p id="res-prevention" class="text-xs text-slate-600 leading-relaxed"></p>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ==================== TAB 2: RADAR PETA SEBARAN WABAH ==================== -->
+    <div id="tab-radar" class="tab-content hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="map-pin" class="w-5 h-5 text-emerald-600"></i>
+              <span>Radar Peringatan Dini Serangan Hama & Penyakit (Early Warning Map)</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Pemetaan geospasial titik laporan serangan hama di lumbung padi dan sentra pangan nasional.</p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <span class="inline-flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-1.5"></span> Kasus Kritis</span>
+            <span class="inline-flex items-center"><span class="w-3 h-3 rounded-full bg-amber-500 mr-1.5"></span> Kasus Sedang</span>
+            <span class="inline-flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-1.5"></span> Tanaman Sehat</span>
+          </div>
+        </div>
+
+        <!-- Peta Kontainer -->
+        <div id="outbreak-map" class="w-full h-[520px] rounded-2xl border border-slate-200 shadow-inner z-10"></div>
+      </div>
+
+    </div>
+
+    <!-- ==================== TAB 3: TANYA PENYULUH AI ==================== -->
+    <div id="tab-chat" class="tab-content hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[650px] overflow-hidden">
+        
+        <!-- Chat Header -->
+        <div class="bg-gradient-to-r from-emerald-800 to-green-700 p-4 text-white flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <i data-lucide="bot" class="w-6 h-6 text-emerald-200"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold">AgriBot - Penyuluh Pertanian AI</h3>
+              <p class="text-xs text-emerald-200">Konsultasi takaran pupuk, waktu semprot, dan pembuatan obat nabati</p>
+            </div>
+          </div>
+          <span class="text-xs bg-emerald-500/40 text-emerald-100 px-3 py-1 rounded-full border border-emerald-400/30">Online 24 Jam</span>
+        </div>
+
+        <!-- Chat Messages Container -->
+        <div id="chat-messages" class="flex-grow p-4 sm:p-6 overflow-y-auto space-y-4 bg-slate-50">
+          
+          <!-- Bot Welcome Message -->
+          <div class="flex items-start space-x-3 max-w-2xl">
+            <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 text-xs font-bold">AI</div>
+            <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none p-4 shadow-sm text-xs sm:text-sm text-slate-700 leading-relaxed">
+              👋 <strong>Halo Bapak/Ibu Petani!</strong> Saya adalah asisten pintar <strong>Penyuluh Pertanian TaniCek</strong>.<br><br>
+              Ada yang bisa saya bantu terkait perawatan tanaman pangan Anda hari ini?<br>
+              <div class="mt-3 flex flex-wrap gap-1.5">
+                <button onclick="askQuickPrompt('Bagaimana cara pemupukan berimbang untuk padi sawah?')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-lg transition">💡 Takaran Pupuk Padi</button>
+                <button onclick="askQuickPrompt('Cara membuat pestisida nabati daun nimba?')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-lg transition">🌿 Resep Pestisida Nabati</button>
+                <button onclick="askQuickPrompt('Kapan waktu semprot terbaik untuk tanaman?')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-lg transition">⏰ Waktu Semprot Terbaik</button>
+                <button onclick="askQuickPrompt('Bagaimana cara membasmi hama wereng coklat?')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-lg transition">🦗 Pengendalian Wereng</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Chat Input Form -->
+        <form id="chat-form" class="p-3 sm:p-4 bg-white border-t border-slate-200 flex items-center space-x-2">
+          <input type="text" id="chat-input" placeholder="Ketik pertanyaan seputar tanaman, hama, pupuk, atau penyakit..." class="flex-grow bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-xs sm:text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none">
+          <button type="submit" id="btn-send-chat" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-3 rounded-xl transition flex items-center justify-center">
+            <i data-lucide="send" class="w-5 h-5"></i>
+          </button>
+        </form>
+
+      </div>
+
+    </div>
+
+    <!-- ==================== TAB 4: RIWAYAT & LAPORAN ==================== -->
+    <div id="tab-history" class="tab-content hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <i data-lucide="clipboard-list" class="w-5 h-5 text-emerald-600"></i>
+              <span>Riwayat Pemeriksaan Tanaman Petani</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Catatan diagnosa tersimpan untuk monitoring tren kesehatan tanaman per komoditas.</p>
+          </div>
+          <button onclick="loadReports()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            <span>Segarkan Data</span>
+          </button>
+        </div>
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">Waktu</th>
+                <th class="py-3 px-4">Komoditas</th>
+                <th class="py-3 px-4">Diagnosa Hama/Penyakit</th>
+                <th class="py-3 px-4">Keparahan</th>
+                <th class="py-3 px-4">Akurasi</th>
+                <th class="py-3 px-4">Wilayah</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody" class="divide-y divide-slate-100 text-slate-700">
+              <!-- Diisi JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==================== TAB 5: PANDUAN PHT & KETAHANAN PANGAN ==================== -->
+    <div id="tab-guide" class="tab-content hidden space-y-6">
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+          <div class="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center">
+            <i data-lucide="shield-check" class="w-5 h-5"></i>
+          </div>
+          <h3 class="text-sm font-bold text-slate-800">1. Konsep PHT (Pengendalian Hama Terpadu)</h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            PHT adalah pendekatan ramah lingkungan yang memadukan berbagai cara pengendalian: varietas tahan hama, pergiliran tanaman, pelestarian musuh alami, dan penggunaan pestisida kimia sebagai opsi terakhir sesuai ambang batas ekonomi.
+          </p>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+          <div class="w-10 h-10 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center">
+            <i data-lucide="droplets" class="w-5 h-5"></i>
+          </div>
+          <h3 class="text-sm font-bold text-slate-800">2. Irigasi Berselang (AWD)</h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Metode Alternate Wetting and Drying (AWD) menghemat air irigasi sawah hingga 30%, memperkuat perakaran tanaman padi, dan menekan kelembapan mikro yang menjadi pemicu utama serangan hawar daun bakteri dan jamur blast.
+          </p>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+          <div class="w-10 h-10 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center">
+            <i data-lucide="wheat" class="w-5 h-5"></i>
+          </div>
+          <h3 class="text-sm font-bold text-slate-800">3. Menjaga Cadangan Pangan Petani</h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Dengan menekan angka kehilangan hasil (yield loss) akibat hama dari rata-rata 35% menjadi di bawah 10%, petani kecil dapat meningkatkan surplus gabah keluarga dan memperkuat ketahanan pangan desa secara berkelanjutan.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Kartu Spesifikasi Model & Dataset yang Telah Dilatih -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center">
+              <i data-lucide="cpu" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Arsitektur Model AI & Dataset Pelatihan</h3>
+              <p class="text-xs text-slate-500">Model Deep Learning Convolutional Neural Network (TaniCekNet) terlatih secara mandiri.</p>
+            </div>
+          </div>
+          <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full self-start sm:self-auto">Status: Model Aktif (Siap Pakai)</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
+            <span class="text-xs text-slate-500 block">Total Kelas Patogen</span>
+            <strong class="text-xl font-extrabold text-slate-900 mt-1 block">16 Kelas</strong>
+            <span class="text-[10px] text-emerald-600 font-medium">6 Komoditas Pangan</span>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
+            <span class="text-xs text-slate-500 block">Ukuran Dataset</span>
+            <strong class="text-xl font-extrabold text-slate-900 mt-1 block">1.040 Citra</strong>
+            <span class="text-[10px] text-slate-500 font-medium">800 Latih / 240 Validasi</span>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
+            <span class="text-xs text-slate-500 block">Akurasi Validasi</span>
+            <strong class="text-xl font-extrabold text-emerald-600 mt-1 block">100.0%</strong>
+            <span class="text-[10px] text-emerald-700 font-medium">Loss Validasi: 0.057</span>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
+            <span class="text-xs text-slate-500 block">Arsitektur Neural Net</span>
+            <strong class="text-sm font-bold text-slate-900 mt-2 block">TaniCekNet 4-Block</strong>
+            <span class="text-[10px] text-slate-500 font-medium">BatchNorm + AdamW</span>
+          </div>
+        </div>
+
+        <div class="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 text-xs text-emerald-900 space-y-1">
+          <strong class="block text-emerald-950 font-bold">🌾 16 Kelas Penyakit & Tanaman Pangan yang Dikuasai Model:</strong>
+          <p class="leading-relaxed text-emerald-800">
+            <strong>Padi:</strong> Blast Daun, Hawar Daun Bakteri (Kresek), Bercak Coklat, Padi Sehat • 
+            <strong>Jagung:</strong> Bulai Jagung, Bercak Turcicum, Karat Daun, Jagung Sehat • 
+            <strong>Cabai:</strong> Antraknosa (Patek), Virus Keriting Bule, Bercak Daun Cercospora, Cabai Sehat • 
+            <strong>Bawang Merah:</strong> Layu Fusarium (Moler), Bercak Ungu (Trotol) • 
+            <strong>Kedelai:</strong> Karat Daun Kedelai • 
+            <strong>Tomat:</strong> Hawar Daun (Late Blight).
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL PENGATURAN API KEY -->
+  <div id="modal-settings" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+          <i data-lucide="key" class="w-5 h-5 text-amber-500"></i>
+          <span>Pengaturan Google Gemini API Key</span>
+        </h3>
+        <button id="btn-close-settings" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-500 leading-relaxed">
+        TaniCek AI sudah dilengkapi dengan <strong>Vision Knowledge Engine Bawaan</strong> (bisa bekerja 100% offline). Jika Anda ingin analisis multimodal yang sangat mendalam dari Google Gemini, masukkan API Key Anda di bawah:
+      </p>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Gemini API Key:</label>
+        <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none">
+      </div>
+
+      <div class="flex space-x-2 pt-2">
+        <button id="btn-save-settings" class="flex-grow bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition">
+          Simpan Kunci
+        </button>
+        <button id="btn-clear-settings" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-3 rounded-xl text-xs transition">
+          Hapus
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-slate-500 text-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center space-x-2">
+        <span class="font-bold text-emerald-800">TaniCek AI</span>
+        <span>•</span>
+        <span>Mendukung Kedaulatan & Ketahanan Pangan Indonesia</span>
+      </div>
+      <div>
+        <span>Didukung oleh Computer Vision & Gemini Multimodal AI</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Main JavaScript App Logic -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
